@@ -12,6 +12,9 @@
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdarg.h>
+#include <string.h>
+#include <math.h>
 
 // We use a simple recursive descent lexer/parser
 
@@ -71,6 +74,18 @@ void parse_fini(parser_t *parser) {
     if(parser->src && parser->owns_src) free((char *)parser->src);
     if(parser->error) free(parser->error);
     memset(parser, 0, sizeof(*parser));
+}
+
+static char *vsprintf_alloc(const char *fmt, va_list args) {
+    va_list args2;
+    va_copy(args2, args);
+    size_t len = vsnprintf(NULL, 0, fmt, args2);
+    va_end(args2);
+    
+    PARSE_ASSERT(len > 0);
+    char *out = PARSE_CALLOC(len+1, 1);
+    (void)vsnprintf(out, len+1, fmt, args);
+    return out;
 }
 
 void parse_fail(parser_t *parser, const char *fmt, ...) {
@@ -287,8 +302,9 @@ size_t parse_text(parser_t *parser, char *out, size_t cap) {
     lex(parser);
     
     if(!out) return len;
-    
-    len = MIN(len, cap);
-    lacf_strlcpy(out, src, cap);
+    if(cap < len) {
+        len = cap;
+    }
+    strncpy(out, src, cap);
     return len;
 }
